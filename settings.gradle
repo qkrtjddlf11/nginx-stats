@@ -1,0 +1,3 @@
+rootProject.name = 'nginx-stats'
+include 'nginx-stats-core'
+include 'nginx-stats-httpcode'

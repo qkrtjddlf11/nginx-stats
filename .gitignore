@@ -1,4 +1,8 @@
 .gradle
+.idea
+build/
+gradle/
+logs/
 **/build/
 !src/**/build/
 

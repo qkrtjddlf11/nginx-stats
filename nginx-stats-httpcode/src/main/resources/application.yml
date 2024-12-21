@@ -1,0 +1,9 @@
+kafkastreams:
+  application_name: nginx-stats-httpcode
+  bootstrap_servers: localhost:10000,localhost:10001,localhost:10002
+  state_dir_path: /stg/kafka_rocksdb
+  input_topic: nginx-logs
+  num_stream_threads: 4
+  min_in_sync_replicas: 2
+  replication_factor: 3
+  retention_days: 3
