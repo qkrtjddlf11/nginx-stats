@@ -7,9 +7,9 @@ import com.nginx.stats.core.metric.MetricLogger;
 import com.nginx.stats.core.predicate.NginxValidator;
 import com.nginx.stats.core.serdes.AvroSerDes;
 import com.nginx.stats.httpcode.streams.config.KafkaStreamsProperties;
+import com.nginx.stats.httpcode.streams.processor.FiveMinNginxStatsHttpcodeProcessorSupplier;
 import com.nginx.stats.httpcode.streams.processor.OneMinNginxStatsHttpcodeProcessorSupplier;
 import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig;
-import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Properties;
@@ -83,18 +83,27 @@ public class NginxStatsHttpcodeRunner implements ApplicationRunner {
             branchMap.get(DefineKeyword.VALIDATOR_SPLIT_PREFIX_NAME + DefineKeyword.VALIDATOR_FAILED_BRANCH_NAME)
                 .to(DefineKeyword.VALIDATOR_FAILED_TOPIC_NAME);
 
-            final OneMinNginxStatsHttpcodeProcessorSupplier oneMinProcessorSupplier = new OneMinNginxStatsHttpcodeProcessorSupplier(
-                kafkaStreamsProperties, nginxStatsHttpcodeSerde);
-
             KStream<String, JsonNode> successBranch = branchMap.get(
                 DefineKeyword.VALIDATOR_SPLIT_PREFIX_NAME + DefineKeyword.VALIDATOR_SUCCCESS_BRANCH_NAME);
+
+            final OneMinNginxStatsHttpcodeProcessorSupplier oneMinProcessorSupplier = new OneMinNginxStatsHttpcodeProcessorSupplier(
+                kafkaStreamsProperties, nginxStatsHttpcodeSerde);
 
             KStream<String, NginxStatsHttpcode> oneMinHttpcodeStream = successBranch.process(oneMinProcessorSupplier,
                 Named.as(DefineKeyword.ONE_MIN_NGINX_STATS_HTTPCODE_PROCESSOR_NAME),
                 DefineKeyword.ONE_MIN_NGINX_STATS_HTTPCODE_STORE_NAME);
 
-            oneMinHttpcodeStream.to(DefineKeyword.ONE_MIN_NGINX_STATS_HTTPCODE_TOPIC_NAME,
+            final FiveMinNginxStatsHttpcodeProcessorSupplier fiveMinProcessorSupplier = new FiveMinNginxStatsHttpcodeProcessorSupplier(
+                kafkaStreamsProperties, nginxStatsHttpcodeSerde);
+
+            KStream<String, NginxStatsHttpcode> fiveMinHttpcodeStream = oneMinHttpcodeStream.process(
+                fiveMinProcessorSupplier, Named.as(DefineKeyword.FIVE_MIN_NGINX_STATS_HTTPCODE_PROCESSOR_NAME),
+                DefineKeyword.FIVE_MIN_NGINX_STATS_HTTPCODE_STORE_NAME,
+                DefineKeyword.FIVE_MIN_NGINX_STATS_HTTPCODE_KEY_STORE_NAME);
+
+            fiveMinHttpcodeStream.to(DefineKeyword.FIVE_MIN_NGINX_STATS_HTTPCODE_TOPIC_NAME,
                 Produced.with(Serdes.String(), nginxStatsHttpcodeSerde));
+
         } catch (Exception e) {
             MetricLogger.printMetricErrorLog(log, MetricCode.APPL_E_0001_FMT, MetricCode.APPL_E_0001,
                 MetricCode.APPL_E_0001_DOC, e.getMessage());

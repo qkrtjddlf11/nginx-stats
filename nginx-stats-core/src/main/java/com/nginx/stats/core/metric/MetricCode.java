@@ -35,6 +35,10 @@ public class MetricCode {
     public static final String JSON_E_0003_DOC = "Empty value";
     public static final String JSON_E_0003_FMT = "{} - {}: {}";
 
+    public static final String PERF_I_0001 = "PERF_I_0001";
+    public static final String PERF_I_0001_DOC = "Performance.";
+    public static final String PERF_I_0001_FMT = "{} - {} Cnt: {}, Rps: {}";
+
     private MetricCode() {
     }
 }
