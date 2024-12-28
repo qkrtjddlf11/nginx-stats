@@ -3,7 +3,9 @@ package com.nginx.stats.httpcode.streams.processor;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.nginx.nginx.stats.httpcode.avro.NginxStatsHttpcode;
 import com.nginx.stats.core.define.NginxDefineKeyword;
+import com.nginx.stats.core.generate.StoreKey;
 import com.nginx.stats.core.statestore.ChangeLog;
 import com.nginx.stats.core.time.TimeConverter;
 import com.nginx.stats.httpcode.streams.Aggregation;
@@ -30,30 +32,30 @@ import org.apache.kafka.streams.state.Stores;
 @RequiredArgsConstructor
 @Slf4j
 public class OneMinNginxStatsHttpcodeProcessorSupplier extends Aggregation implements
-    ProcessorSupplier<String, JsonNode, String, JsonNode> {
+    ProcessorSupplier<String, JsonNode, String, NginxStatsHttpcode> {
 
     private final KafkaStreamsProperties properties;
-    private final Serde<JsonNode> jsonNodeSerde;
+    private final Serde<NginxStatsHttpcode> nginxStatsHttpcodeSerde;
 
     @Override
-    public Processor<String, JsonNode, String, JsonNode> get() {
+    public Processor<String, JsonNode, String, NginxStatsHttpcode> get() {
         return new Processor<>() {
 
-            private ProcessorContext<String, JsonNode> context;
-            private KeyValueStore<String, JsonNode> store;
+            private ProcessorContext<String, NginxStatsHttpcode> context;
+            private KeyValueStore<String, NginxStatsHttpcode> store;
 
             @Override
-            public void init(ProcessorContext<String, JsonNode> context) {
+            public void init(ProcessorContext<String, NginxStatsHttpcode> context) {
                 this.context = context;
                 this.context.schedule(Duration.ofSeconds(5), PunctuationType.WALL_CLOCK_TIME, this::punctuator);
                 this.store = context.getStateStore(DefineKeyword.ONE_MIN_NGINX_STATS_HTTPCODE_STORE_NAME);
             }
 
             private void punctuator(final long timestamp) {
-                try (KeyValueIterator<String, JsonNode> iterator = this.store.all()) {
+                try (KeyValueIterator<String, NginxStatsHttpcode> iterator = this.store.all()) {
                     while (iterator.hasNext()) {
-                        final KeyValue<String, JsonNode> entry = iterator.next();
-                        final Record<String, JsonNode> msg = new Record<>(entry.key, entry.value, timestamp);
+                        final KeyValue<String, NginxStatsHttpcode> entry = iterator.next();
+                        final Record<String, NginxStatsHttpcode> msg = new Record<>(entry.key, entry.value, timestamp);
 
                         this.context.forward(msg);
                     }
@@ -61,40 +63,23 @@ public class OneMinNginxStatsHttpcodeProcessorSupplier extends Aggregation imple
             }
 
             @Override
-            public void process(Record<String, JsonNode> record) {
-                final JsonNode v = record.value();
+            public void process(Record<String, JsonNode> r) {
+                final JsonNode v = r.value();
                 final String statTime = TimeConverter.convertUtcToKst(v.get(NginxDefineKeyword.TIMESTAMP).asText());
                 final String host = v.get(NginxDefineKeyword.HOST).asText();
-                final int status = v.get(NginxDefineKeyword.STATUS).asInt();
+                final String status = v.get(NginxDefineKeyword.STATUS).asText();
+                final String storeKey = StoreKey.generateStateStoreKey(statTime, host, status);
 
-                JsonNode aggregating = this.store.get("");
+                NginxStatsHttpcode aggregating = this.store.get(storeKey);
 
                 if (aggregating == null) {
-                    ObjectMapper objectMapper = new ObjectMapper();
-                    ObjectNode objectNode = objectMapper.createObjectNode();
-
-                    objectNode.put("stat_date", statTime);
-                    objectNode.put("hostname", host);
-                    objectNode.put("status", status);
-                    objectNode.put("count", 0);
-
-                    aggregating = objectNode;
+                    aggregating = NginxStatsHttpcode.newBuilder().setStatDate(statTime).setHostname(host)
+                        .setHttpcode(Integer.parseInt(status)).setCount(1).build();
                 } else {
-                    int count = aggregating.get("count").asInt() + 1;
+                    aggregating.setCount(aggregating.getCount() + 1);
                 }
 
-
-                this.store.put("key", aggregating);
-                // Key: 202412121123_hostname_httpcode
-                /* Value:
-                    {
-                        stat_date: 202412121123
-                        hostname: nginx-server-1
-                        httpcode: 200
-                        count: 1234
-                    }
-                 */
-
+                this.store.put(storeKey, aggregating);
             }
 
             @Override
@@ -107,10 +92,10 @@ public class OneMinNginxStatsHttpcodeProcessorSupplier extends Aggregation imple
 
     @Override
     public Set<StoreBuilder<?>> stores() {
-        StoreBuilder<KeyValueStore<String, JsonNode>> keyValueStoreBuilder =
+        StoreBuilder<KeyValueStore<String, NginxStatsHttpcode>> keyValueStoreBuilder =
             Stores.keyValueStoreBuilder(
                     Stores.persistentKeyValueStore(DefineKeyword.ONE_MIN_NGINX_STATS_HTTPCODE_STORE_NAME),
-                    Serdes.String(), jsonNodeSerde)
+                    Serdes.String(), nginxStatsHttpcodeSerde)
                 .withCachingEnabled()
                 .withLoggingEnabled(ChangeLog.getChangelogConfig(properties.getMinInSyncReplicas(),
                     TimeConverter.convertDaysToMillSec(properties.getRetentionDays())));

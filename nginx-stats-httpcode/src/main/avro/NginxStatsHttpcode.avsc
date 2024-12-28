@@ -1,0 +1,23 @@
+{
+  "type": "record",
+  "name": "NginxStatsHttpcode",
+  "namespace": "com.nginx.nginx.stats.httpcode.avro",
+  "fields": [
+    {
+      "name": "stat_date",
+      "type": "string"
+    },
+    {
+      "name": "hostname",
+      "type": "string"
+    },
+    {
+      "name": "httpcode",
+      "type": "int"
+    },
+    {
+      "name": "count",
+      "type": "int"
+    }
+  ]
+}

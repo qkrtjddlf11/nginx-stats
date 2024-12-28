@@ -1,12 +1,15 @@
 package com.nginx.stats.httpcode.streams;
 
-
 import com.fasterxml.jackson.databind.JsonNode;
+import com.nginx.nginx.stats.httpcode.avro.NginxStatsHttpcode;
 import com.nginx.stats.core.metric.MetricCode;
 import com.nginx.stats.core.metric.MetricLogger;
 import com.nginx.stats.core.predicate.NginxValidator;
+import com.nginx.stats.core.serdes.AvroSerDes;
 import com.nginx.stats.httpcode.streams.config.KafkaStreamsProperties;
 import com.nginx.stats.httpcode.streams.processor.OneMinNginxStatsHttpcodeProcessorSupplier;
+import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig;
+import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Properties;
@@ -28,7 +31,6 @@ import org.apache.kafka.streams.kstream.Branched;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Named;
-import org.apache.kafka.streams.kstream.Predicate;
 import org.apache.kafka.streams.kstream.Produced;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationArguments;
@@ -47,6 +49,8 @@ public class NginxStatsHttpcodeRunner implements ApplicationRunner {
         // Streams config
         streamsConfig.put(StreamsConfig.APPLICATION_ID_CONFIG, kafkaStreamsProperties.getApplicationName());
         streamsConfig.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaStreamsProperties.getBootstrapServers());
+        streamsConfig.put(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG,
+            kafkaStreamsProperties.getSchemaRegistryUrl());
         streamsConfig.put(StreamsConfig.NUM_STREAM_THREADS_CONFIG, kafkaStreamsProperties.getNumStreamThreads());
         streamsConfig.put(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE_V2);
         streamsConfig.put(StreamsConfig.TOPOLOGY_OPTIMIZATION_CONFIG, StreamsConfig.OPTIMIZE);
@@ -64,7 +68,10 @@ public class NginxStatsHttpcodeRunner implements ApplicationRunner {
     }
 
     private void buildTopology(StreamsBuilder builder) {
-        try (final Serde<JsonNode> jsonNodeSerde = Serdes.serdeFrom(new JsonSerializer(), new JsonDeserializer())) {
+        try (final Serde<JsonNode> jsonNodeSerde = Serdes.serdeFrom(new JsonSerializer(), new JsonDeserializer());
+            final Serde<NginxStatsHttpcode> nginxStatsHttpcodeSerde = AvroSerDes.getSpecificAvroSerde(
+                kafkaStreamsProperties.getSchemaRegistryUrl())) {
+
             // Nginx log 유효성 검사 후 SUCCESS_BRANCH OR FAILED_BRANCH로 분기 처리.
             Map<String, KStream<String, JsonNode>> branchMap = builder.stream(kafkaStreamsProperties.getInputTopic(),
                     Consumed.with(Serdes.String(), jsonNodeSerde))
@@ -77,18 +84,20 @@ public class NginxStatsHttpcodeRunner implements ApplicationRunner {
                 .to(DefineKeyword.VALIDATOR_FAILED_TOPIC_NAME);
 
             final OneMinNginxStatsHttpcodeProcessorSupplier oneMinProcessorSupplier = new OneMinNginxStatsHttpcodeProcessorSupplier(
-                kafkaStreamsProperties, jsonNodeSerde);
+                kafkaStreamsProperties, nginxStatsHttpcodeSerde);
 
-            KStream<String, JsonNode> validBranch = branchMap.get(
+            KStream<String, JsonNode> successBranch = branchMap.get(
                 DefineKeyword.VALIDATOR_SPLIT_PREFIX_NAME + DefineKeyword.VALIDATOR_SUCCCESS_BRANCH_NAME);
 
-            KStream<String, JsonNode> oneMinHttpcodeStream = validBranch.process(oneMinProcessorSupplier,
+            KStream<String, NginxStatsHttpcode> oneMinHttpcodeStream = successBranch.process(oneMinProcessorSupplier,
                 Named.as(DefineKeyword.ONE_MIN_NGINX_STATS_HTTPCODE_PROCESSOR_NAME),
                 DefineKeyword.ONE_MIN_NGINX_STATS_HTTPCODE_STORE_NAME);
 
             oneMinHttpcodeStream.to(DefineKeyword.ONE_MIN_NGINX_STATS_HTTPCODE_TOPIC_NAME,
-                Produced.with(Serdes.String(), jsonNodeSerde));
-
+                Produced.with(Serdes.String(), nginxStatsHttpcodeSerde));
+        } catch (Exception e) {
+            MetricLogger.printMetricErrorLog(log, MetricCode.APPL_E_0001_FMT, MetricCode.APPL_E_0001,
+                MetricCode.APPL_E_0001_DOC, e.getMessage());
         }
 
     }

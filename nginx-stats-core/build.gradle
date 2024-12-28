@@ -12,7 +12,8 @@ repositories {
 
 dependencies {
     // Kafka Streams
-    implementation group: 'org.apache.kafka', name: 'kafka-streams', version: "${confluentVersion}"
+    implementation group: 'org.apache.kafka', name: 'kafka-streams', version: "${kafkaVersion}"
+    implementation group: 'io.confluent', name: 'kafka-streams-avro-serde', version: "${confluentVersion}"
 
     // JSON Processing
     implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.18.2'

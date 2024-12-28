@@ -29,6 +29,9 @@ public class KafkaStreamsProperties {
     private String bootstrapServers;
 
     @NotNull
+    private String schemaRegistryUrl;
+
+    @NotNull
     private String stateDirPath;
 
     @NotNull
