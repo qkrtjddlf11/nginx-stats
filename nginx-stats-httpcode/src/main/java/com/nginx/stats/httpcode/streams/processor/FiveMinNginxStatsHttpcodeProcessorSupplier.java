@@ -53,11 +53,11 @@ public class FiveMinNginxStatsHttpcodeProcessorSupplier extends Aggregation impl
             }
 
             private void punctuate(long timestamp) {
-                try (KeyValueIterator<String, NginxStatsHttpcode> iterator = this.store.all()) {
+                try (KeyValueIterator<String, String> iterator = this.keyStore.all()) {
                     while (iterator.hasNext()) {
-                        final KeyValue<String, NginxStatsHttpcode> entry = iterator.next();
-                        final org.apache.kafka.streams.processor.api.Record<String, NginxStatsHttpcode> msg = new Record<>(
-                            entry.key, entry.value, timestamp);
+                        final KeyValue<String, String> entry = iterator.next();
+                        final NginxStatsHttpcode v = this.store.get(entry.key);
+                        final Record<String, NginxStatsHttpcode> msg = new Record<>(entry.key, v, timestamp);
 
                         this.context.forward(msg);
                         this.keyStore.delete(entry.key);
@@ -79,12 +79,12 @@ public class FiveMinNginxStatsHttpcodeProcessorSupplier extends Aggregation impl
                 if (aggregating == null) {
                     aggregating = NginxStatsHttpcode.newBuilder().setStatDate(statTime).setHostname(host)
                         .setHttpcode(Integer.parseInt(status)).setCount(v.getCount()).build();
+                    this.keyStore.put(storeKey, "");
                 } else {
                     aggregating.setCount(aggregating.getCount() + v.getCount());
                 }
 
                 this.store.put(storeKey, aggregating);
-                this.keyStore.put(storeKey, "");
             }
 
             @Override

@@ -24,16 +24,16 @@ public class MetricCode {
 
     // Json
     public static final String JSON_E_0001 = "JSON_E_0001";
-    public static final String JSON_E_0001_DOC = "Match failed";
-    public static final String JSON_E_0001_FMT = "{} - {}. Value: {}";
+    public static final String JSON_E_0001_DOC = "Empty key";
+    public static final String JSON_E_0001_FMT = "{} - {}. Key: {}, Value: {}";
 
     public static final String JSON_E_0002 = "JSON_E_0002";
     public static final String JSON_E_0002_DOC = "Invalid value";
-    public static final String JSON_E_0002_FMT = "{} - {}: {}, Value: {}";
+    public static final String JSON_E_0002_FMT = "{} - {}: Key: {}, Value: {}";
 
     public static final String JSON_E_0003 = "JSON_E_0003";
     public static final String JSON_E_0003_DOC = "Empty value";
-    public static final String JSON_E_0003_FMT = "{} - {}: {}";
+    public static final String JSON_E_0003_FMT = "{} - {}: Key: {}, Value: {}";
 
     public static final String PERF_I_0001 = "PERF_I_0001";
     public static final String PERF_I_0001_DOC = "Performance.";
