@@ -75,7 +75,7 @@ public class FiveMinNginxStatsHttpcodeProcessorSupplier extends Aggregation impl
                 final String host = v.getHostname();
                 final String status = String.valueOf(v.getHttpcode());
                 final String storeKey = this.stateStoreKey.generateStateStoreKey(statTime, host, status);
-                System.out.println("FiveMin: " + statTime + ", " + storeKey);
+
                 NginxStatsHttpcode aggregating = this.store.get(storeKey);
 
                 if (aggregating == null) {

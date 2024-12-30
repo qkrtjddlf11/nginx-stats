@@ -85,7 +85,7 @@ public class OneMinNginxStatsHttpcodeProcessorSupplier extends Aggregation imple
                 final String host = v.get(NginxDefineKeyword.HOST).asText();
                 final String status = v.get(NginxDefineKeyword.STATUS).asText();
                 final String storeKey = this.stateStoreKey.generateStateStoreKey(statTime, host, status);
-                System.out.println("OneMinStatime: " + statTime + ", StoreKey: " + storeKey);
+
                 NginxStatsHttpcode aggregating = this.store.get(storeKey);
 
                 if (aggregating == null) {

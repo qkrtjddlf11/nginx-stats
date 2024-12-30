@@ -48,7 +48,6 @@ public class TimeGroup {
     }
 
     private String toFormattedStatTime(long epoch) {
-        System.out.println("toFormattedStatTime: " + epoch);
         LocalDateTime dateTime = LocalDateTime.ofEpochSecond(epoch, 0, ZoneOffset.ofHours(9));
         return dateTime.format(formatter);
     }
