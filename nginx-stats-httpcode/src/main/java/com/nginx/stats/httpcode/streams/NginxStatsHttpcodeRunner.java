@@ -8,6 +8,8 @@ import com.nginx.stats.core.predicate.NginxValidator;
 import com.nginx.stats.core.serdes.AvroSerDes;
 import com.nginx.stats.httpcode.streams.config.KafkaStreamsProperties;
 import com.nginx.stats.httpcode.streams.processor.FiveMinNginxStatsHttpcodeProcessorSupplier;
+import com.nginx.stats.httpcode.streams.processor.OneDayNginxStatsHttpcodeProcessorSupplier;
+import com.nginx.stats.httpcode.streams.processor.OneHourNginxStatsHttpcodeProcessorSupplier;
 import com.nginx.stats.httpcode.streams.processor.OneMinNginxStatsHttpcodeProcessorSupplier;
 import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig;
 import java.time.Duration;
@@ -102,6 +104,28 @@ public class NginxStatsHttpcodeRunner implements ApplicationRunner {
                 DefineKeyword.FIVE_MIN_NGINX_STATS_HTTPCODE_KEY_STORE_NAME);
 
             fiveMinHttpcodeStream.to(DefineKeyword.FIVE_MIN_NGINX_STATS_HTTPCODE_TOPIC_NAME,
+                Produced.with(Serdes.String(), nginxStatsHttpcodeSerde));
+
+            final OneHourNginxStatsHttpcodeProcessorSupplier oneHourProcessorSupplier = new OneHourNginxStatsHttpcodeProcessorSupplier(
+                kafkaStreamsProperties, nginxStatsHttpcodeSerde);
+
+            KStream<String, NginxStatsHttpcode> oneHourHttpcodeStream = fiveMinHttpcodeStream.process(
+                oneHourProcessorSupplier, Named.as(DefineKeyword.ONE_HOUR_NGINX_STATS_HTTPCODE_PROCESSOR_NAME),
+                DefineKeyword.ONE_HOUR_NGINX_STATS_HTTPCODE_STORE_NAME,
+                DefineKeyword.ONE_HOUR_NGINX_STATS_HTTPCODE_KEY_STORE_NAME);
+
+            oneHourHttpcodeStream.to(DefineKeyword.ONE_HOUR_NGINX_STATS_HTTPCODE_TOPIC_NAME,
+                Produced.with(Serdes.String(), nginxStatsHttpcodeSerde));
+
+            final OneDayNginxStatsHttpcodeProcessorSupplier oneDayProcessorSupplier = new OneDayNginxStatsHttpcodeProcessorSupplier(
+                kafkaStreamsProperties, nginxStatsHttpcodeSerde);
+
+            KStream<String, NginxStatsHttpcode> oneDayHttpcodeStream = oneHourHttpcodeStream.process(
+                oneDayProcessorSupplier, Named.as(DefineKeyword.ONE_DAY_NGINX_STATS_HTTPCODE_PROCESSOR_NAME),
+                DefineKeyword.ONE_DAY_NGINX_STATS_HTTPCODE_STORE_NAME,
+                DefineKeyword.ONE_DAY_NGINX_STATS_HTTPCODE_KEY_STORE_NAME);
+
+            oneDayHttpcodeStream.to(DefineKeyword.ONE_DAY_NGINX_STATS_HTTPCODE_TOPIC_NAME,
                 Produced.with(Serdes.String(), nginxStatsHttpcodeSerde));
 
         } catch (Exception e) {

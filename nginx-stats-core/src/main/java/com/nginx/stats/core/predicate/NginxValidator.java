@@ -18,17 +18,33 @@ public class NginxValidator implements Predicate<String, JsonNode> {
 
     @Override
     public boolean test(String s, JsonNode jsonNode) {
-        return this.hasRequiredKeys(nginxFields, jsonNode) && this.isValidValues(jsonNode);
+        return this.hasRequiredKeys(jsonNode) && this.hasRequiredValues(jsonNode) && this.isValidValues(jsonNode);
     }
 
-    private boolean hasRequiredKeys(String[] keys, JsonNode jsonNode) {
-        for (String key : keys) {
-            if (!jsonNode.hasNonNull(key)) {
+    private boolean hasRequiredKeys(JsonNode v) {
+        for (String key : NginxValidator.nginxFields) {
+            if (!v.hasNonNull(key)) {
                 MetricLogger.printMetricErrorLog(log, MetricCode.JSON_E_0001_FMT, MetricCode.JSON_E_0001,
-                    MetricCode.JSON_E_0001_DOC, key, jsonNode);
+                    MetricCode.JSON_E_0001_DOC, key, v);
                 return false;
             }
         }
+        return true;
+    }
+
+    private boolean hasRequiredValues(JsonNode v) {
+        final JsonNode ip = v.get(NginxDefineKeyword.IP);
+        final JsonNode bytes = v.get(NginxDefineKeyword.BYTES);
+        final JsonNode status = v.get(NginxDefineKeyword.STATUS);
+
+        if (ip.isNull()) {
+            return printEmptyValueErrorLog(NginxDefineKeyword.IP, ip);
+        } else if (bytes.isNull()) {
+            return printEmptyValueErrorLog(NginxDefineKeyword.BYTES, bytes);
+        } else if (status.isNull()) {
+            return printEmptyValueErrorLog(NginxDefineKeyword.STATUS, status);
+        }
+
         return true;
     }
 
@@ -38,14 +54,11 @@ public class NginxValidator implements Predicate<String, JsonNode> {
         final long status = v.get(NginxDefineKeyword.STATUS).asLong(-1);
 
         if (!isInvalidIPv4(ip)) {
-            printInvalidValueErrorLog(NginxDefineKeyword.IP, ip);
-            return false;
+            return printInvalidValueErrorLog(NginxDefineKeyword.IP, ip);
         } else if (isNumOutOfRange(status, 0, 999)) {
-            printInvalidValueErrorLog(NginxDefineKeyword.STATUS, status);
-            return false;
+            return printInvalidValueErrorLog(NginxDefineKeyword.STATUS, status);
         } else if (isNumOutOfRange(bytes, 0, Integer.MAX_VALUE)) {
-            printInvalidValueErrorLog(NginxDefineKeyword.BYTES, bytes);
-            return false;
+            return printInvalidValueErrorLog(NginxDefineKeyword.BYTES, bytes);
         }
         return true;
     }
@@ -63,8 +76,15 @@ public class NginxValidator implements Predicate<String, JsonNode> {
         return value < min || value > max;
     }
 
-    private void printInvalidValueErrorLog(String field, Object v) {
+    private boolean printEmptyValueErrorLog(String field, Object v) {
+        MetricLogger.printMetricErrorLog(log, MetricCode.JSON_E_0003_FMT, MetricCode.JSON_E_0003,
+            MetricCode.JSON_E_0003_DOC, field, v);
+        return false;
+    }
+
+    private boolean printInvalidValueErrorLog(String field, Object v) {
         MetricLogger.printMetricErrorLog(log, MetricCode.JSON_E_0002_FMT, MetricCode.JSON_E_0002,
             MetricCode.JSON_E_0002_DOC, field, v);
+        return false;
     }
 }

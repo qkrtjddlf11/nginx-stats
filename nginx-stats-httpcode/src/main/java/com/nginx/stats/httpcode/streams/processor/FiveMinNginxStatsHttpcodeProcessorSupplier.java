@@ -1,16 +1,17 @@
 package com.nginx.stats.httpcode.streams.processor;
 
 import com.nginx.nginx.stats.httpcode.avro.NginxStatsHttpcode;
-import com.nginx.stats.core.define.TimeGroup;
 import com.nginx.stats.core.generate.StateStoreKey;
 import com.nginx.stats.core.statestore.ChangeLog;
-import com.nginx.stats.core.time.TimeConverter;
+import com.nginx.stats.core.time.TimeGroup;
+import com.nginx.stats.core.time.TimeYMDHM;
 import com.nginx.stats.httpcode.streams.Aggregation;
 import com.nginx.stats.httpcode.streams.DefineKeyword;
 import com.nginx.stats.httpcode.streams.config.KafkaStreamsProperties;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.serialization.Serde;
@@ -42,6 +43,7 @@ public class FiveMinNginxStatsHttpcodeProcessorSupplier extends Aggregation impl
             private KeyValueStore<String, NginxStatsHttpcode> store;
             private KeyValueStore<String, String> keyStore;
             private StateStoreKey stateStoreKey;
+            private TimeGroup timeGroup;
 
             @Override
             public void init(ProcessorContext<String, NginxStatsHttpcode> context) {
@@ -50,6 +52,7 @@ public class FiveMinNginxStatsHttpcodeProcessorSupplier extends Aggregation impl
                 this.store = context.getStateStore(DefineKeyword.FIVE_MIN_NGINX_STATS_HTTPCODE_STORE_NAME);
                 this.keyStore = context.getStateStore(DefineKeyword.FIVE_MIN_NGINX_STATS_HTTPCODE_KEY_STORE_NAME);
                 this.stateStoreKey = new StateStoreKey();
+                this.timeGroup = new TimeGroup(TimeGroup.FIVE_MIN_SEC, 12, new TimeYMDHM());
             }
 
             private void punctuate(long timestamp) {
@@ -68,22 +71,21 @@ public class FiveMinNginxStatsHttpcodeProcessorSupplier extends Aggregation impl
             @Override
             public void process(Record<String, NginxStatsHttpcode> r) {
                 NginxStatsHttpcode v = r.value();
-                final String statTime = v.getStatDate();
+                final String statTime = this.timeGroup.generateStatTime(v.getStatDate());
                 final String host = v.getHostname();
                 final String status = String.valueOf(v.getHttpcode());
-                final String storeKey = this.stateStoreKey.generateStateStoreKey(
-                    TimeConverter.convertStattimeByTimeGroup(statTime, TimeGroup.FIVE_MIN_SEC), host, status);
-
+                final String storeKey = this.stateStoreKey.generateStateStoreKey(statTime, host, status);
+                System.out.println("FiveMin: " + statTime + ", " + storeKey);
                 NginxStatsHttpcode aggregating = this.store.get(storeKey);
 
                 if (aggregating == null) {
                     aggregating = NginxStatsHttpcode.newBuilder().setStatDate(statTime).setHostname(host)
                         .setHttpcode(Integer.parseInt(status)).setCount(v.getCount()).build();
-                    this.keyStore.put(storeKey, "");
                 } else {
                     aggregating.setCount(aggregating.getCount() + v.getCount());
                 }
 
+                this.keyStore.putIfAbsent(storeKey, "");
                 this.store.put(storeKey, aggregating);
             }
 
@@ -103,7 +105,7 @@ public class FiveMinNginxStatsHttpcodeProcessorSupplier extends Aggregation impl
                     Serdes.String(), nginxStatsHttpcodeSerde)
                 .withCachingEnabled()
                 .withLoggingEnabled(ChangeLog.getChangelogConfig(properties.getMinInSyncReplicas(),
-                    TimeConverter.convertDaysToMillSec(properties.getRetentionDays())));
+                    TimeUnit.DAYS.toMillis(properties.getRetentionDays())));
 
         StoreBuilder<KeyValueStore<String, String>> keyStoreBuilder =
             Stores.keyValueStoreBuilder(
@@ -111,7 +113,7 @@ public class FiveMinNginxStatsHttpcodeProcessorSupplier extends Aggregation impl
                     Serdes.String(), Serdes.String())
                 .withCachingEnabled()
                 .withLoggingEnabled(ChangeLog.getChangelogConfig(properties.getMinInSyncReplicas(),
-                    TimeConverter.convertDaysToMillSec(properties.getRetentionDays())));
+                    TimeUnit.DAYS.toMillis(properties.getRetentionDays())));
 
         return Collections.synchronizedSet(Set.of(keyValueStoreBuilder, keyStoreBuilder));
     }

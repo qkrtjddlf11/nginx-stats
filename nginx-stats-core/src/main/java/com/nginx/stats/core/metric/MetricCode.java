@@ -4,7 +4,7 @@ public class MetricCode {
 
     public static final String APPL_I_0001 = "APPL_I_0001";
     public static final String APPL_I_0001_DOC = "Topology description.";
-    public static final String APPL_I_0001_FMT = "{} - {} {}";
+    public static final String APPL_I_0001_FMT = "{} - {}\n {}";
 
     public static final String APPL_I_0002 = "APPL_I_0002";
     public static final String APPL_I_0002_DOC = "Kafka Streams Application starts.";
