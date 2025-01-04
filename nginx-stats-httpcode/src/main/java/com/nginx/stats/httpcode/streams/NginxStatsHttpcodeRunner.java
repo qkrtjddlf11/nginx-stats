@@ -34,6 +34,7 @@ import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Named;
 import org.apache.kafka.streams.kstream.Produced;
+import org.apache.kafka.streams.kstream.Repartitioned;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -91,9 +92,15 @@ public class NginxStatsHttpcodeRunner implements ApplicationRunner {
             final OneMinNginxStatsHttpcodeProcessorSupplier oneMinProcessorSupplier = new OneMinNginxStatsHttpcodeProcessorSupplier(
                 kafkaStreamsProperties, nginxStatsHttpcodeSerde);
 
+            Repartitioned<String, NginxStatsHttpcode> repartitioner = Repartitioned.with(Serdes.String(),
+                    nginxStatsHttpcodeSerde).withNumberOfPartitions(2)
+                .withName(DefineKeyword.NGINX_STATS_HTTPCODE_REPARTITION_TOPIC_NAME);
+
             KStream<String, NginxStatsHttpcode> oneMinHttpcodeStream = successBranch.process(oneMinProcessorSupplier,
-                Named.as(DefineKeyword.ONE_MIN_NGINX_STATS_HTTPCODE_PROCESSOR_NAME),
-                DefineKeyword.ONE_MIN_NGINX_STATS_HTTPCODE_STORE_NAME);
+                    Named.as(DefineKeyword.ONE_MIN_NGINX_STATS_HTTPCODE_PROCESSOR_NAME),
+                    DefineKeyword.ONE_MIN_NGINX_STATS_HTTPCODE_STORE_NAME)
+                .selectKey((k, v) -> v.getHostname())
+                .repartition(repartitioner);
 
             final FiveMinNginxStatsHttpcodeProcessorSupplier fiveMinProcessorSupplier = new FiveMinNginxStatsHttpcodeProcessorSupplier(
                 kafkaStreamsProperties, nginxStatsHttpcodeSerde);
