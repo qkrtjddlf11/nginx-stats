@@ -89,8 +89,7 @@ public class OneMinNginxStatsHttpcodeProcessorSupplier extends Aggregation imple
                 NginxStatsHttpcode aggregating = this.store.get(storeKey);
 
                 if (aggregating == null) {
-                    aggregating = NginxStatsHttpcode.newBuilder().setStatDate(statTime).setHostname(host)
-                        .setHttpcode(Integer.parseInt(status)).setCount(1).build();
+                    aggregating = aggregateByKey(statTime, host, status, 1);
                 } else {
                     aggregating.setCount(aggregating.getCount() + 1);
                 }

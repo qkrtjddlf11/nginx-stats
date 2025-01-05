@@ -38,11 +38,14 @@ public class NginxValidator implements Predicate<String, JsonNode> {
         final JsonNode status = v.get(NginxDefineKeyword.STATUS);
 
         if (ip.isNull()) {
-            return printEmptyValueErrorLog(NginxDefineKeyword.IP, ip);
+            printEmptyValueErrorLog(NginxDefineKeyword.IP, ip);
+            return false;
         } else if (bytes.isNull()) {
-            return printEmptyValueErrorLog(NginxDefineKeyword.BYTES, bytes);
+            printEmptyValueErrorLog(NginxDefineKeyword.BYTES, bytes);
+            return false;
         } else if (status.isNull()) {
-            return printEmptyValueErrorLog(NginxDefineKeyword.STATUS, status);
+            printEmptyValueErrorLog(NginxDefineKeyword.STATUS, status);
+            return false;
         }
 
         return true;
@@ -54,11 +57,14 @@ public class NginxValidator implements Predicate<String, JsonNode> {
         final long status = v.get(NginxDefineKeyword.STATUS).asLong(-1);
 
         if (!isInvalidIPv4(ip)) {
-            return printInvalidValueErrorLog(NginxDefineKeyword.IP, ip);
+            printInvalidValueErrorLog(NginxDefineKeyword.IP, ip);
+            return false;
         } else if (isNumOutOfRange(status, 0, 999)) {
-            return printInvalidValueErrorLog(NginxDefineKeyword.STATUS, status);
+            printInvalidValueErrorLog(NginxDefineKeyword.STATUS, status);
+            return false;
         } else if (isNumOutOfRange(bytes, 0, Integer.MAX_VALUE)) {
-            return printInvalidValueErrorLog(NginxDefineKeyword.BYTES, bytes);
+            printInvalidValueErrorLog(NginxDefineKeyword.BYTES, bytes);
+            return false;
         }
         return true;
     }
@@ -76,15 +82,13 @@ public class NginxValidator implements Predicate<String, JsonNode> {
         return value < min || value > max;
     }
 
-    private boolean printEmptyValueErrorLog(String field, Object v) {
+    private void printEmptyValueErrorLog(String field, Object v) {
         MetricLogger.printMetricErrorLog(log, MetricCode.JSON_E_0003_FMT, MetricCode.JSON_E_0003,
             MetricCode.JSON_E_0003_DOC, field, v);
-        return false;
     }
 
-    private boolean printInvalidValueErrorLog(String field, Object v) {
+    private void printInvalidValueErrorLog(String field, Object v) {
         MetricLogger.printMetricErrorLog(log, MetricCode.JSON_E_0002_FMT, MetricCode.JSON_E_0002,
             MetricCode.JSON_E_0002_DOC, field, v);
-        return false;
     }
 }
