@@ -1,7 +1,7 @@
 {
   "type": "record",
-  "name": "NginxStatsHttpcode",
-  "namespace": "com.nginx.nginx.stats.httpcode.avro",
+  "name": "NginxStatsBytes",
+  "namespace": "com.nginx.nginx.stats.bytes.avro",
   "fields": [
     {
       "name": "stat_date",
@@ -12,11 +12,7 @@
       "type": "string"
     },
     {
-      "name": "httpcode",
-      "type": "int"
-    },
-    {
-      "name": "count",
+      "name": "bytes",
       "type": "long"
     }
   ]

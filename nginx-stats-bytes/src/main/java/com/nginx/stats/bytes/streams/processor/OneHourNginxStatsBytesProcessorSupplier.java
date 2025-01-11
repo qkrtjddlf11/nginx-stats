@@ -1,13 +1,13 @@
-package com.nginx.stats.httpcode.streams.processor;
+package com.nginx.stats.bytes.streams.processor;
 
-import com.nginx.nginx.stats.httpcode.avro.NginxStatsHttpcode;
+import com.nginx.nginx.stats.bytes.avro.NginxStatsBytes;
+import com.nginx.stats.bytes.streams.DefineKeyword;
+import com.nginx.stats.bytes.streams.config.KafkaStreamsProperties;
+import com.nginx.stats.bytes.streams.impl.NginxStatsBytesAggregator;
 import com.nginx.stats.core.generate.StateStoreKey;
 import com.nginx.stats.core.statestore.ChangeLog;
 import com.nginx.stats.core.time.TimeGroup;
 import com.nginx.stats.core.time.TimeYMDHM;
-import com.nginx.stats.httpcode.streams.DefineKeyword;
-import com.nginx.stats.httpcode.streams.config.KafkaStreamsProperties;
-import com.nginx.stats.httpcode.streams.impl.NginxStatsHttpcodeAggregator;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.Set;
@@ -29,28 +29,28 @@ import org.apache.kafka.streams.state.Stores;
 
 @RequiredArgsConstructor
 @Slf4j
-public class OneHourNginxStatsHttpcodeProcessorSupplier extends NginxStatsHttpcodeAggregator implements
-    ProcessorSupplier<String, NginxStatsHttpcode, String, NginxStatsHttpcode> {
+public class OneHourNginxStatsBytesProcessorSupplier extends NginxStatsBytesAggregator implements
+    ProcessorSupplier<String, NginxStatsBytes, String, NginxStatsBytes> {
 
     private final KafkaStreamsProperties properties;
-    private final Serde<NginxStatsHttpcode> nginxStatsHttpcodeSerde;
+    private final Serde<NginxStatsBytes> nginxStatsBytesSerde;
 
     @Override
-    public Processor<String, NginxStatsHttpcode, String, NginxStatsHttpcode> get() {
+    public Processor<String, NginxStatsBytes, String, NginxStatsBytes> get() {
         return new Processor<>() {
 
-            private ProcessorContext<String, NginxStatsHttpcode> context;
-            private KeyValueStore<String, NginxStatsHttpcode> store;
+            private ProcessorContext<String, NginxStatsBytes> context;
+            private KeyValueStore<String, NginxStatsBytes> store;
             private KeyValueStore<String, String> keyStore;
             private StateStoreKey stateStoreKey;
             private TimeGroup timeGroup;
 
             @Override
-            public void init(ProcessorContext<String, NginxStatsHttpcode> context) {
+            public void init(ProcessorContext<String, NginxStatsBytes> context) {
                 this.context = context;
                 this.context.schedule(Duration.ofSeconds(30), PunctuationType.WALL_CLOCK_TIME, this::punctuate);
-                this.store = context.getStateStore(DefineKeyword.ONE_HOUR_NGINX_STATS_HTTPCODE_STORE_NAME);
-                this.keyStore = context.getStateStore(DefineKeyword.ONE_HOUR_NGINX_STATS_HTTPCODE_KEY_STORE_NAME);
+                this.store = context.getStateStore(DefineKeyword.ONE_HOUR_NGINX_STATS_BYTES_STORE_NAME);
+                this.keyStore = context.getStateStore(DefineKeyword.ONE_HOUR_NGINX_STATS_BYTES_KEY_STORE_NAME);
                 this.stateStoreKey = new StateStoreKey();
                 this.timeGroup = new TimeGroup(TimeGroup.ONE_HOUR_SEC, 24, new TimeYMDHM());
             }
@@ -59,8 +59,8 @@ public class OneHourNginxStatsHttpcodeProcessorSupplier extends NginxStatsHttpco
                 try (KeyValueIterator<String, String> iterator = this.keyStore.all()) {
                     while (iterator.hasNext()) {
                         final KeyValue<String, String> entry = iterator.next();
-                        final NginxStatsHttpcode v = this.store.get(entry.key);
-                        final Record<String, NginxStatsHttpcode> msg = new Record<>(entry.key, v, timestamp);
+                        final NginxStatsBytes v = this.store.get(entry.key);
+                        final Record<String, NginxStatsBytes> msg = new Record<>(entry.key, v, timestamp);
 
                         this.context.forward(msg);
                         this.keyStore.delete(entry.key);
@@ -69,19 +69,19 @@ public class OneHourNginxStatsHttpcodeProcessorSupplier extends NginxStatsHttpco
             }
 
             @Override
-            public void process(Record<String, NginxStatsHttpcode> r) {
-                NginxStatsHttpcode v = r.value();
+            public void process(Record<String, NginxStatsBytes> r) {
+                NginxStatsBytes v = r.value();
                 final String statTime = this.timeGroup.generateStatTime(v.getStatDate());
                 final String host = v.getHostname();
-                final String status = String.valueOf(v.getHttpcode());
-                final String storeKey = this.stateStoreKey.generateStateStoreKey(statTime, host, status);
+                final long bytes = v.getBytes();
+                final String storeKey = this.stateStoreKey.generateStateStoreKey(statTime, host);
 
-                NginxStatsHttpcode aggregating = this.store.get(storeKey);
+                NginxStatsBytes aggregating = this.store.get(storeKey);
 
                 if (aggregating == null) {
-                    aggregating = aggregateByStoreKey(statTime, host, status, v.getCount());
+                    aggregating = aggregateByStoreKey(statTime, host, "", bytes);
                 } else {
-                    aggregating.setCount(aggregating.getCount() + v.getCount());
+                    aggregating.setBytes(aggregating.getBytes() + v.getBytes());
                 }
 
                 this.keyStore.putIfAbsent(storeKey, "");
@@ -98,17 +98,17 @@ public class OneHourNginxStatsHttpcodeProcessorSupplier extends NginxStatsHttpco
 
     @Override
     public Set<StoreBuilder<?>> stores() {
-        StoreBuilder<KeyValueStore<String, NginxStatsHttpcode>> keyValueStoreBuilder =
+        StoreBuilder<KeyValueStore<String, NginxStatsBytes>> keyValueStoreBuilder =
             Stores.keyValueStoreBuilder(
-                    Stores.persistentKeyValueStore(DefineKeyword.ONE_HOUR_NGINX_STATS_HTTPCODE_STORE_NAME),
-                    Serdes.String(), nginxStatsHttpcodeSerde)
+                    Stores.persistentKeyValueStore(DefineKeyword.ONE_HOUR_NGINX_STATS_BYTES_STORE_NAME),
+                    Serdes.String(), nginxStatsBytesSerde)
                 .withCachingEnabled()
                 .withLoggingEnabled(ChangeLog.getChangelogConfig(properties.getMinInSyncReplicas(),
                     TimeUnit.DAYS.toMillis(properties.getRetentionDays())));
 
         StoreBuilder<KeyValueStore<String, String>> keyStoreBuilder =
             Stores.keyValueStoreBuilder(
-                    Stores.inMemoryKeyValueStore(DefineKeyword.ONE_HOUR_NGINX_STATS_HTTPCODE_KEY_STORE_NAME),
+                    Stores.inMemoryKeyValueStore(DefineKeyword.ONE_HOUR_NGINX_STATS_BYTES_KEY_STORE_NAME),
                     Serdes.String(), Serdes.String())
                 .withCachingEnabled()
                 .withLoggingEnabled(ChangeLog.getChangelogConfig(properties.getMinInSyncReplicas(),

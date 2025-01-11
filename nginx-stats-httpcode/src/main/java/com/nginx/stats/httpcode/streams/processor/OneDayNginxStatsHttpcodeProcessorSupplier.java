@@ -5,9 +5,9 @@ import com.nginx.stats.core.generate.StateStoreKey;
 import com.nginx.stats.core.statestore.ChangeLog;
 import com.nginx.stats.core.time.TimeGroup;
 import com.nginx.stats.core.time.TimeYMDHM;
-import com.nginx.stats.httpcode.streams.Aggregation;
 import com.nginx.stats.httpcode.streams.DefineKeyword;
 import com.nginx.stats.httpcode.streams.config.KafkaStreamsProperties;
+import com.nginx.stats.httpcode.streams.impl.NginxStatsHttpcodeAggregator;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.Set;
@@ -29,7 +29,7 @@ import org.apache.kafka.streams.state.Stores;
 
 @RequiredArgsConstructor
 @Slf4j
-public class OneDayNginxStatsHttpcodeProcessorSupplier extends Aggregation implements
+public class OneDayNginxStatsHttpcodeProcessorSupplier extends NginxStatsHttpcodeAggregator implements
     ProcessorSupplier<String, NginxStatsHttpcode, String, NginxStatsHttpcode> {
 
     private final KafkaStreamsProperties properties;
@@ -79,7 +79,7 @@ public class OneDayNginxStatsHttpcodeProcessorSupplier extends Aggregation imple
                 NginxStatsHttpcode aggregating = this.store.get(storeKey);
 
                 if (aggregating == null) {
-                    aggregating = aggregateByKey(statTime, host, status, v.getCount());
+                    aggregating = aggregateByStoreKey(statTime, host, status, v.getCount());
                 } else {
                     aggregating.setCount(aggregating.getCount() + v.getCount());
                 }

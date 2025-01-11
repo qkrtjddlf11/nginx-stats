@@ -1,0 +1,34 @@
+package com.nginx.stats.bytes.streams;
+
+public class DefineKeyword {
+
+    public static final String VALIDATOR_SPLIT_PREFIX_NAME = "VALIDATOR_";
+    public static final String VALIDATOR_SUCCCESS_BRANCH_NAME = "SUCCESS_BRANCH";
+    public static final String VALIDATOR_FAILED_BRANCH_NAME = "FAILED_BRANCH";
+    public static final String VALIDATOR_FAILED_TOPIC_NAME = "BYTES_VALIDATOR_FAILED";
+
+    public static final String NGINX_STATS_BYTES_REPARTITION_TOPIC_NAME = "NGINX_STATS_BYTES_REPARTITION";
+
+    public static final String ONE_MIN_NGINX_STATS_BYTES_PROCESSOR_NAME = "ONE_MIN_NGINX_STATS_BYTES_PROCESSOR";
+    public static final String ONE_MIN_NGINX_STATS_BYTES_STORE_NAME = "ONE_MIN_NGINX_STATS_BYTES_STORE";
+
+    public static final String FIVE_MIN_NGINX_STATS_BYTES_PROCESSOR_NAME = "FIVE_MIN_NGINX_STATS_BYTES_PROCESSOR";
+    public static final String FIVE_MIN_NGINX_STATS_BYTES_STORE_NAME = "FIVE_MIN_NGINX_STATS_BYTES_STORE";
+    public static final String FIVE_MIN_NGINX_STATS_BYTES_KEY_STORE_NAME = "FIVE_MIN_NGINX_STATS_BYTES_KEY_STORE";
+
+    public static final String ONE_HOUR_NGINX_STATS_BYTES_PROCESSOR_NAME = "ONE_HOUR_NGINX_STATS_BYTES_PROCESSOR";
+    public static final String ONE_HOUR_NGINX_STATS_BYTES_STORE_NAME = "ONE_HOUR_NGINX_STATS_BYTES_STORE";
+    public static final String ONE_HOUR_NGINX_STATS_BYTES_KEY_STORE_NAME = "ONE_HOUR_NGINX_STATS_BYTES_KEY_STORE";
+
+    public static final String ONE_DAY_NGINX_STATS_BYTES_PROCESSOR_NAME = "ONE_DAY_NGINX_STATS_BYTES_PROCESSOR";
+    public static final String ONE_DAY_NGINX_STATS_BYTES_STORE_NAME = "ONE_DAY_NGINX_STATS_BYTES_STORE";
+    public static final String ONE_DAY_NGINX_STATS_BYTES_KEY_STORE_NAME = "ONE_DAY_NGINX_STATS_BYTES_KEY_STORE";
+
+    // Output Topic
+    public static final String FIVE_MIN_NGINX_STATS_BYTES_TOPIC_NAME = "T_JOB_5M_BYTES";
+    public static final String ONE_HOUR_NGINX_STATS_BYTES_TOPIC_NAME = "T_JOB_1H_BYTES";
+    public static final String ONE_DAY_NGINX_STATS_BYTES_TOPIC_NAME = "T_JOB_1D_BYTES";
+
+    private DefineKeyword() {
+    }
+}
